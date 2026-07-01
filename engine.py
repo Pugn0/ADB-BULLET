@@ -125,18 +125,24 @@ class _BlockHandlers:
     @staticmethod
     def BLOCK_INPUT_TEXT(props: dict, engine: "NoCodeEngine") -> None:
         """
-        Digita um texto no campo focado.
+        Toca no campo (se tap_x/tap_y fornecidos) e digita texto.
 
         Obrigatórias: text
-        Opcionais: clear_first (default False)
+        Opcionais: tap_x, tap_y, clear_first (default False)
         """
         text = _resolve(props["text"], engine.variables)
-        clear_first = bool(props.get("clear_first", False))
+        clear_first = str(props.get("clear_first", "false")).lower() == "true"
+
+        tap_x = int(props.get("tap_x", 0) or 0)
+        tap_y = int(props.get("tap_y", 0) or 0)
+        if tap_x and tap_y:
+            engine.session.tap(tap_x, tap_y)
+            time.sleep(0.3)
 
         if clear_first:
             engine.session.limpar_campo()
         engine.session.digitar(text)
-        log.info("BLOCK_INPUT_TEXT: digitou '%s'.", text)
+        log.info("BLOCK_INPUT_TEXT: digitou '%s' em (%s,%s).", text, tap_x, tap_y)
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -247,6 +253,13 @@ class _BlockHandlers:
         value = _resolve(props["value"], engine.variables)
         engine.variables[name] = value
         log.info("BLOCK_SET_VARIABLE: '%s' = '%s'.", name, value)
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def BLOCK_BACK(props: dict, engine: "NoCodeEngine") -> None:
+        """Pressiona o botão Voltar do Android."""
+        engine.session.keyevent("BACK")
+        log.info("BLOCK_BACK: pressionou KEYCODE_BACK.")
 
     # ------------------------------------------------------------------
     @staticmethod

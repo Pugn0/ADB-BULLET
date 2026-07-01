@@ -70,10 +70,12 @@ export const BLOCK_DEFS = [
     label: 'Input Text',
     icon: '⌨️',
     color: '#f59e0b',
-    desc: 'Digita texto no campo focado',
+    desc: 'Toca no campo e digita texto',
     fields: [
-      { key: 'text',        label: 'Texto',    type: 'text',   default: '',      placeholder: '<variavel> ou texto fixo' },
+      { key: 'text',        label: 'Texto',        type: 'text',   default: '',      placeholder: '<variavel> ou texto fixo' },
       { key: 'clear_first', label: 'Limpar antes', type: 'select', default: 'false', options: ['false','true'] },
+      { key: 'tap_x',       label: 'Tap X',        type: 'number', default: 0 },
+      { key: 'tap_y',       label: 'Tap Y',        type: 'number', default: 0 },
     ],
   },
   {
@@ -154,6 +156,14 @@ export const BLOCK_DEFS = [
     fields: [
       { key: 'seconds', label: 'Segundos', type: 'number', default: 2, placeholder: '2' },
     ],
+  },
+  {
+    type: 'BLOCK_BACK',
+    label: 'Voltar',
+    icon: '⬅️',
+    color: '#64748b',
+    desc: 'Pressiona o botão Voltar do Android',
+    fields: [],
   },
   {
     type: 'BLOCK_KEYCODE',

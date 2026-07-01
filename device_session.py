@@ -244,11 +244,40 @@ class DeviceSession:
             self.esperar(0.5, 0.2)
 
     def app_atual(self) -> Optional[dict]:
-        out = self.adb("shell dumpsys window windows", timeout=10)
-        m = re.search(r"mCurrentFocus=Window\{[^}]+ ([^\s/]+)/([^\s}]+)", out)
+        # Tenta dumpsys window (funciona na maioria dos Android)
+        out = self.adb("shell dumpsys window", timeout=10)
+
+        patterns = [
+            # Android < 12: mCurrentFocus=Window{hash u0 pkg/activity}
+            r"mCurrentFocus=Window\{[^}]+\s+([^\s/]+)/([^\s}]+)\}",
+            # Android 12+: mFocusedApp=... pkg/activity
+            r"mFocusedApp=.*?([a-zA-Z][a-zA-Z0-9_.]+)/([^\s},]+)",
+            # Alternativo sem espaço antes do package
+            r"mCurrentFocus=Window\{[^ ]+ ([^/\s]+)/([^\s}]+)",
+        ]
+        m = None
+        for pat in patterns:
+            m = re.search(pat, out)
+            if m:
+                break
+
         if not m:
+            # Fallback: dumpsys activity
             out2 = self.adb("shell dumpsys activity activities", timeout=10)
-            m = re.search(r"mResumedActivity:.*?([a-z][a-z0-9_.]+)/([^\s}]+)", out2, re.IGNORECASE)
+            for pat in [
+                r"mResumedActivity[^:]*:\s*ActivityRecord\{[^}]+\s+([^\s/]+)/([^\s}]+)",
+                r"mResumedActivity:.*?([a-z][a-z0-9_.]+)/([^\s}]+)",
+                r"topResumedActivity=.*?([a-zA-Z][a-zA-Z0-9_.]+)/([^\s},]+)",
+            ]:
+                m = re.search(pat, out2, re.IGNORECASE)
+                if m:
+                    break
+
+        if not m:
+            # Último fallback: cmd activity
+            out3 = self.adb("shell cmd activity top-activity 2>/dev/null", timeout=5)
+            m = re.search(r"([a-zA-Z][a-zA-Z0-9_.]+)/([^\s]+)", out3)
+
         if not m:
             return None
         return {"package": m.group(1), "activity": m.group(2)}

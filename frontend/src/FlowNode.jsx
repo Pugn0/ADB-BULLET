@@ -1,25 +1,66 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useState, useEffect } from 'react'
 import { Handle, Position, useReactFlow } from '@xyflow/react'
 import { BLOCK_DEF_MAP } from './blockDefs.js'
 
-/**
- * Nó customizado universal — renderiza o formulário de qualquer bloco
- * com base em blockDefs.js.
- *
- * data shape esperado:
- *   blockType : string          — chave em BLOCK_DEF_MAP
- *   fields    : Record<string, any> — valores atuais dos campos
- */
+// Input com estado local para evitar "snapback" do React Flow
+function FieldInput({ fieldKey, fieldDef, value, onCommit }) {
+  const [local, setLocal] = useState(value ?? fieldDef.default ?? '')
+
+  // Sincroniza apenas se o valor externo mudar por outra causa (ex: carregar bot)
+  useEffect(() => {
+    setLocal(value ?? fieldDef.default ?? '')
+  }, [value])  // eslint-disable-line
+
+  const stopKeys = e => {
+    e.stopPropagation()
+    e.nativeEvent?.stopImmediatePropagation()
+  }
+
+  if (fieldDef.type === 'select') {
+    return (
+      <select value={local}
+        onChange={e => { setLocal(e.target.value); onCommit(fieldKey, e.target.value) }}
+        onKeyDown={stopKeys}
+      >
+        {fieldDef.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+      </select>
+    )
+  }
+
+  if (fieldDef.type === 'textarea') {
+    return (
+      <textarea rows={3} value={local}
+        placeholder={fieldDef.placeholder ?? ''}
+        onChange={e => { setLocal(e.target.value); onCommit(fieldKey, e.target.value) }}
+        onKeyDown={stopKeys}
+      />
+    )
+  }
+
+  return (
+    <input
+      type={fieldDef.type === 'number' ? 'number' : 'text'}
+      value={local}
+      placeholder={fieldDef.placeholder ?? ''}
+      step={fieldDef.type === 'number' ? 'any' : undefined}
+      onChange={e => { setLocal(e.target.value); onCommit(fieldKey, e.target.value) }}
+      onKeyDown={stopKeys}
+    />
+  )
+}
+
 const FlowNode = memo(({ id, data, selected }) => {
-  const { updateNodeData } = useReactFlow()
+  const { updateNodeData, deleteElements } = useReactFlow()
   const def = BLOCK_DEF_MAP[data.blockType]
 
-  const handleChange = useCallback((key, value) => {
-    updateNodeData(id, prev => ({
-      ...prev,
-      fields: { ...prev.fields, [key]: value },
-    }))
-  }, [id, updateNodeData])
+  const handleCommit = useCallback((key, value) => {
+    updateNodeData(id, { fields: { ...data.fields, [key]: value } })
+  }, [id, updateNodeData, data.fields])
+
+  const handleDelete = useCallback((e) => {
+    e.stopPropagation()
+    deleteElements({ nodes: [{ id }] })
+  }, [id, deleteElements])
 
   if (!def) {
     return (
@@ -32,74 +73,38 @@ const FlowNode = memo(({ id, data, selected }) => {
   return (
     <div className={`flow-node${selected ? ' selected' : ''}`}>
 
-      {/* Connector de entrada — topo */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="in"
-        style={{ top: -6 }}
-      />
+      <Handle type="target" position={Position.Top} id="in" style={{ top: -6 }} />
 
-      {/* Cabeçalho */}
       <div className="node-header">
         <span className="node-header-icon">{def.icon}</span>
         <span className="node-title">{def.label}</span>
-        <span
-          className="node-badge"
-          style={{
-            background: def.color + '22',
-            color: def.color,
-            border: `1px solid ${def.color}55`,
-          }}
-        >
+        <span className="node-badge" style={{ background: def.color + '22', color: def.color, border: `1px solid ${def.color}55` }}>
           {def.type.replace('BLOCK_', '')}
         </span>
+        <button
+          onClick={handleDelete}
+          title="Deletar bloco"
+          style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 2px', borderRadius: 3 }}
+          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+          onMouseLeave={e => e.currentTarget.style.color = '#4b5563'}
+        >✕</button>
       </div>
 
-      {/* Campos do formulário */}
       <div className="node-body">
         {def.fields.map(field => (
           <div className="field" key={field.key}>
             <label className="field-label">{field.label}</label>
-
-            {field.type === 'select' ? (
-              <select
-                value={data.fields[field.key] ?? field.default}
-                onChange={e => handleChange(field.key, e.target.value)}
-              >
-                {field.options.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-
-            ) : field.type === 'textarea' ? (
-              <textarea
-                rows={3}
-                value={data.fields[field.key] ?? field.default}
-                placeholder={field.placeholder ?? ''}
-                onChange={e => handleChange(field.key, e.target.value)}
-              />
-
-            ) : (
-              <input
-                type={field.type === 'number' ? 'number' : 'text'}
-                value={data.fields[field.key] ?? field.default}
-                placeholder={field.placeholder ?? ''}
-                step={field.type === 'number' ? 'any' : undefined}
-                onChange={e => handleChange(field.key, e.target.value)}
-              />
-            )}
+            <FieldInput
+              fieldKey={field.key}
+              fieldDef={field}
+              value={data.fields[field.key]}
+              onCommit={handleCommit}
+            />
           </div>
         ))}
       </div>
 
-      {/* Connector de saída — base */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="out"
-        style={{ bottom: -6 }}
-      />
+      <Handle type="source" position={Position.Bottom} id="out" style={{ bottom: -6 }} />
 
     </div>
   )

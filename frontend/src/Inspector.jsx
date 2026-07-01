@@ -146,15 +146,11 @@ function BlockCreateModal({ el, onConfirm, onClose }) {
           retry_delay: 1,
         }
       : {
-          // BLOCK_INPUT_TEXT — clica primeiro via coordenadas, depois digita
-          // (usualmente combinado com BLOCK_CLICK_TEXT antes)
-          text:   '',
-          method: 'natural',
+          text:  '',
+          clear_first: 'false',
+          tap_x: el.center_x,
+          tap_y: el.center_y,
         }
-
-    // Injeta também as coords de tap como fallback (BLOCK_SWIPE usa isso)
-    props._center_x = el.center_x
-    props._center_y = el.center_y
 
     onConfirm(blockType, props)
     onClose()
