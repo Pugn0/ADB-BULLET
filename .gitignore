@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE / Ferramentas
+.claude/
+frontend/.claude/
+*.log
+
+# Arquivos de debug / temporários
+resp*.json
+shot_test.png
+window_dump_*.xml
+
+# CyAndroCel (instalado via pip — não commitar código fonte)
+cyandrocel_source/
+
+# Dados sensíveis
+.env
